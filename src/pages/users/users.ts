@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import {  NavController, NavParams } from 'ionic-angular';
+import { NavController, NavParams } from 'ionic-angular';
 import { UserChat } from '../user-chat/user-chat';
 import { Socket } from '../../providers/socket';
 import { User } from '../../providers/user';
@@ -13,38 +13,53 @@ import { User } from '../../providers/user';
  */
 //@IonicPage()
 @Component({
-  selector: 'page-users',
-  templateUrl: 'users.html',
+    selector: 'page-users',
+    templateUrl: 'users.html',
 })
 export class Users {
 
-private users = [];
-private userName : String;
-  constructor(public navCtrl: NavController, public navParams: NavParams, public socket : Socket, public user : User) {
+    private users = [];
+    private userName: String;
+    private socketId;
+    private socket;
+    constructor(public navCtrl: NavController, public navParams: NavParams, public socketService: Socket, public userService: User) {
 
-      this.userName = navParams.get('userName');
+        this.userName = navParams.get('userName');
 
-      this.socket.emit('userName', this.userName);
-      
-      this.socket.on('userList', (userList, socketId) => {
-        this.users = userList;
-      });
+        this.socket = this.socketService.getSocket();
 
-  }
+        this.socket.emit('userName', this.userName);
 
-  ionViewDidLoad() {
-    console.log('ionViewDidLoad Users');
-  }
+        this.socket.on('userList', (userList, socketId) => {
+            if (this.socketId == null) {
+                this.socketId = socketId;
+            }
+            this.userService.setSocketId(this.socketId);
+            // remove the user from user list who is login
+            userList = userList.filter( (user) => {
+                return user.userName != this.userName;
+            })
+            this.users = userList;
+        });
 
-  itemTapped(event, user) {
-      let data = {
-          from : this.userName,
-          to : user.userName
-      }
-      this.socket.emit('selectedUserMsg', data);
-    this.navCtrl.push(UserChat, {
-        user : user
-    })
-  }
+    }
+
+    ionViewDidLoad() {
+        console.log('ionViewDidLoad Users');
+    }
+
+    itemTapped(event, user) {
+        this.userService.setSelectedUser(user.id, user.userName);
+        let data = {
+            from: this.userName,
+            to: user.userName,
+            toUserId : user.id,
+            fromUserId : this.socketId
+        }
+        this.socket.emit('selectedUserMsg', data);
+        this.navCtrl.push(UserChat, {
+            user: user
+        })
+    }
 
 }
